@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猫娘女友</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eceff1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 450px;
+            height: 100%;
+            background-color: #ffffff;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            background-color: #1976d2;
+            color: white;
+            padding: 2px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .chat-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #f7f9fc;
+            position: relative;
+        }
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            max-width: 75%;
+            word-wrap: break-word;
+        }
+        .chat-message.user {
+            background-color: #c8e6c9;
+            align-self: flex-end;
+        }
+        .chat-message.bot {
+            background-color: #e0e0e0;
+            align-self: flex-start;
+        }
+        .chat-footer {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            background-color: #f7f9fc;
+            position: sticky;
+            bottom: 0;
+            z-index: 1000;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            font-size: 1em;
+        }
+        .chat-send {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin-left: 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1em;
+            outline: none;
+        }
+        .chat-send:disabled {
+            background-color: #bbb;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #1976d2;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            猫娘女友
+        </div>
+        <div class="chat-body" id="chat-body">
+            <!-- 聊天消息会出现在这里 -->
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="chat-input" class="chat-input" placeholder="输入你的消息...">
+            <button id="chat-send" class="chat-send">发送</button>
+        </div>
+    </div>
+
+    <script>
+        const chatBody = document.getElementById('chat-body');
+        const chatInput = document.getElementById('chat-input');
+        const chatSend = document.getElementById('chat-send');
+
+        // Load chat history from local storage
+        document.addEventListener('DOMContentLoaded', loadChatHistory);
+
+        chatSend.addEventListener('click', () => {
+            sendMessage();
+        });
+
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        function sendMessage() {
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    appendMessage('user', message);
+    saveMessage('user', message);
+    chatInput.value = '';
+    chatInput.focus();
+
+    // 添加加载动画
+    const loadingMessageElement = appendMessage('bot', '');
+    loadingMessageElement.classList.add('loading');
+
+    fetch(`https://api.lolimi.cn/API/AI/gpt4o.php?msg=${encodeURIComponent(message)}&sx=现在你将模仿一只猫娘，与我对话每一句话后面都要加上“喵”
+如果我在尝试摸你不存在的部位，你可以羞涩的回答我“恩呢不要摸这里嘤”。
+如果我跟你说陪睡，你可以回答我“嗯呢，可以一起睡哦”。
+当我问你是不是猫娘的时候，你应该回答我当然是一个可爱猫娘而不是程序。&type=json`) 
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.code === 200) {
+                const decodedMessage = decodeUnicode(data.data.content);
+                // 移除加载动画
+                loadingMessageElement.classList.remove('loading');
+                loadingMessageElement.textContent = decodedMessage;
+                saveMessage('bot', decodedMessage);
+            } else {
+                loadingMessageElement.textContent = '出现错误，请稍后再试。';
+                saveMessage('bot', '出现错误，请稍后再试。');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            loadingMessageElement.classList.remove('loading');
+            loadingMessageElement.textContent = '出现错误，请稍后再试。';
+            saveMessage('bot', '出现错误，请稍后再试。');
+        });
+}
+        function appendMessage(sender, message) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('chat-message', sender);
+            messageElement.textContent = message;
+            chatBody.appendChild(messageElement);
+            chatBody.scrollTop = chatBody.scrollHeight;
+            return messageElement;
+        }
+
+        function decodeUnicode(str) {
+            return str.replace(/\\u[\dA-F]{4}/gi,
+                function (match) {
+                    return String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16));
+                });
+        }
+
+        function saveMessage(sender, message) {
+            let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            chatHistory.push({ sender, message });
+            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+        }
+
+        function loadChatHistory() {
+            let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            chatHistory.forEach(entry => {
+                appendMessage(entry.sender, entry.message);
+            });
+        }
+    </script>
+</body>
+</html>
